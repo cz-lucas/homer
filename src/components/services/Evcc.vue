@@ -1,102 +1,113 @@
 <template>
-  <Generic :item="item">
-    <template #content>
-      <p class="title is-4">{{ item.name }}</p>
-      <p v-if="summary" class="subtitle is-6">
-        {{ summary }}
-      </p>
+  <Generic :item="item" :badges="badges">
+    <template v-if="metrics.length" #subtitle>
+      <span
+        v-for="(metric, index) in metrics"
+        :key="metric.key"
+        :title="metric.label"
+      >
+        <span v-if="index" class="mx-1"> | </span>
+        <i :class="metric.icon"></i> {{ metric.value }}
+      </span>
     </template>
   </Generic>
 </template>
 
 <script>
-import Generic from "@/components/services/Generic.vue";
 import service from "@/mixins/service.js";
 
+const BATTERY_LEVELS = ["empty", "quarter", "half", "three-quarters", "full"];
+
+const METRICS = [
+  {
+    key: "pv",
+    path: ".pvPower",
+    label: "Solar power",
+    icon: "fa-solid fa-solar-panel",
+    unit: " W",
+  },
+  {
+    key: "home",
+    path: ".homePower",
+    label: "Home power",
+    icon: "fa-solid fa-house",
+    unit: " W",
+  },
+  {
+    key: "grid",
+    path: ".grid.power",
+    label: "Grid power",
+    icon: "fa-solid fa-plug",
+    unit: " W",
+  },
+  {
+    key: "soc",
+    path: ".battery.soc",
+    label: "Battery charge",
+    icon: (soc) =>
+      `fa-solid fa-battery-${BATTERY_LEVELS[Math.min(Math.round(soc / 25), 4)]}`,
+    unit: "%",
+  },
+  {
+    key: "battery",
+    path: ".battery.power",
+    label: "Battery power",
+    icon: "fa-solid fa-car-battery",
+    unit: " W",
+  },
+  {
+    key: "co2",
+    path: ".tariffCo2",
+    label: "Grid CO₂ intensity",
+    icon: "fa-solid fa-leaf",
+    unit: " g/kWh",
+  },
+];
+
+const STATE_QUERY = `{${METRICS.map(({ key, path }) => `${key}:(${path}?//null)`).join(",")}}`;
+
 export default {
-  name: "EVCC",
-  components: {
-    Generic,
-  },
+  name: "Evcc",
   mixins: [service],
-  props: {
-    item: Object,
-  },
   data: () => ({
-    batteryPower: null,
-    batterySoc: null,
-    gridPower: null,
-    homePower: null,
-    pvPower: null,
-    co2kWh: null,
+    state: null,
+    serverError: null,
   }),
-  created() {
-    this.autoUpdateMethod = this.fetchStatus;
-    this.fetchStatus();
-  },
   computed: {
-    summary() {
-      const items = [];
-
-      if (this.batterySoc !== null) {
-        if(this.batterySoc >= 20) {
-          items.push(`🔋 ${this.round(this.batterySoc)} %`);
-        } else {
-          items.push(`🪫 ${this.round(this.batterySoc)} %`);
+    metrics() {
+      if (this.serverError || !this.state) {
+        return [];
+      }
+      return METRICS.flatMap(({ key, label, icon, unit }) => {
+        const value = this.state[key];
+        if (!this.isValueShown(key) || typeof value !== "number") {
+          return [];
         }
-      }
-
-      if (this.batteryPower !== null) {
-        items.push(`🔋 ${this.round(this.batteryPower)} W`);
-      }
-
-      if (this.pvPower !== null) {
-        items.push(`☀️ ${this.round(this.pvPower)} W`);
-      }
-
-      if (this.gridPower !== null) {
-        items.push(`⚡ ${this.round(this.gridPower)} W`);
-      }
-
-      if (this.co2kWh !== null) {
-        items.push(`🌍 ${this.round(this.co2kWh)} g/kWh`);
-      }
-
-      return items.join(" · ");
+        return {
+          key,
+          label,
+          icon: typeof icon === "function" ? icon(value) : icon,
+          value: `${Math.round(value)}${unit}`,
+        };
+      });
+    },
+    badges() {
+      return [this.connectionBadge()];
     },
   },
   methods: {
-    fetchStatus: async function () {
-      this.fetch("/api/state")
-        .then((status) => {
-          this.batteryPower = status.battery.power || null;
-          this.batterySoc = status.battery.soc || null;
-          this.gridPower = status.grid.power || null;
-          this.homePower = status.homePower || null;
-          this.pvPower = status.pvPower || null;
-          this.co2kWh = status.tariffCo2 || null;
-        })
-        .catch((e) => console.log(e));
-    },
-    round(value) {
-      return Math.round(value);
+    fetchData: function () {
+      return this.load(
+        this.fetch(`/api/state?jq=${encodeURIComponent(STATE_QUERY)}`).then(
+          (state) => {
+            if (!Object.values(state).some((v) => typeof v === "number")) {
+              throw new Error("No EVCC power data in the response");
+            }
+            this.state = state;
+          },
+        ),
+      );
     },
   },
 };
 </script>
-
-<style scoped lang="scss">
-:deep(.card-content) {
-  height: auto;
-  overflow: visible;
-}
-
-.subtitle {
-  margin-top: 0.35rem;
-  line-height: 1.65;
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  word-break: break-word;
-}
-</style>
