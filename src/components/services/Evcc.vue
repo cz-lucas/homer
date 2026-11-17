@@ -1,14 +1,16 @@
 <template>
   <Generic :item="item" :badges="badges">
     <template v-if="metrics.length" #subtitle>
-      <span
-        v-for="(metric, index) in metrics"
-        :key="metric.key"
-        :title="metric.label"
-      >
-        <span v-if="index" class="mx-1"> | </span>
-        <i :class="metric.icon"></i> {{ metric.value }}
-      </span>
+      <div class="evcc-metrics">
+        <span
+          v-for="(metric, index) in metrics"
+          :key="metric.key"
+          :title="metric.label"
+        >
+          <span v-if="index" class="mx-1"> | </span>
+          <i :class="metric.icon"></i> {{ metric.value }}
+        </span>
+      </div>
     </template>
   </Generic>
 </template>
@@ -111,3 +113,16 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.evcc-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  white-space: normal;
+  overflow: visible;
+}
+
+.evcc-metrics > span {
+  white-space: nowrap;
+}
+</style>
