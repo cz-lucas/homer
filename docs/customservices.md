@@ -201,7 +201,7 @@ Jellyfin 12 disables legacy authorization on upgrade, which stops the `X-Emby-To
 
 ## EVCC
 
-Displays power data from [EVCC](https://evcc.io/): solar, home and grid power (negative while exporting), the home battery's charge and power (negative while charging), and the grid's CO₂ intensity when EVCC has a CO₂ tariff.
+Displays power data from [EVCC](https://evcc.io/): solar, home and grid power (negative while exporting), the home battery's charge and power (negative while charging), and the grid's CO₂ intensity when EVCC has CO₂ data.
 
 ```yaml
 - name: "EVCC"
@@ -209,6 +209,7 @@ Displays power data from [EVCC](https://evcc.io/): solar, home and grid power (n
   logo: "assets/tools/sample.png"
   url: https://my-service.url
   hide: [] # Optional: hides "pv", "home", "grid", "soc", "battery", "co2", "serverError".
+  kilowattConversionThreshold: 500 # Optional (default: 500), minimum wattage at which power is displayed in kW instead of W.
 ```
 
 The card shows as many values as fit, in that order, so use `hide` to pick the ones you want. EVCC accepts requests from any origin, but not with credentials or custom headers: leave `useCredentials` off for this card (set it to `false` if `proxy.useCredentials` is on), and don't set `headers` on it or in `proxy`.

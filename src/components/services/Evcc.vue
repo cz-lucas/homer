@@ -2,11 +2,7 @@
   <Generic :item="item" :badges="badges">
     <template v-if="metrics.length" #subtitle>
       <div class="evcc-metrics">
-        <span
-          v-for="(metric, index) in metrics"
-          :key="metric.key"
-          :title="metric.label"
-        >
+        <span v-for="(metric, index) in metrics" :key="metric.key" :title="metric.label">
           <span v-if="index" class="mx-1"> | </span>
           <i :class="metric.icon"></i> {{ metric.value }}
         </span>
@@ -89,7 +85,7 @@ export default {
           key,
           label,
           icon: typeof icon === "function" ? icon(value) : icon,
-          value: `${Math.round(value)}${unit}`,
+          value: `${this.createValueString(value, unit)}`,
         };
       });
     },
@@ -110,6 +106,26 @@ export default {
         ),
       );
     },
+    // Converts the value from W to kW if it is bigger than 500W and adds the unit
+    createValueString: function (value, unit) {
+      // Remove all leading whitespaces from the unit
+      unit = unit.trimStart();
+
+      const kilowattConversionThreshold = Number.isInteger(this.item.kilowattConversionThreshold) ? this.item.kilowattConversionThreshold : 500;
+
+      if (unit === "W" && Math.abs(value) >= kilowattConversionThreshold) {
+        // Convert value to kW
+        value = value / 1000;
+
+        // Round value
+        value = Math.round(value * 10) / 10;
+
+        unit = "k" + unit;
+      } else {
+        value = Math.round(value);
+      }
+      return value + " " + unit;
+    }
   },
 };
 </script>
@@ -122,7 +138,7 @@ export default {
   overflow: visible;
 }
 
-.evcc-metrics > span {
+.evcc-metrics>span {
   white-space: nowrap;
 }
 </style>
